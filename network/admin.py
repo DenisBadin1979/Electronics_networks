@@ -5,6 +5,7 @@ from .models import NetworkNode, Contact, Product
 class ContactInline(admin.StackedInline):
     model = Contact
     can_delete = False
+    # fk_name = 'node'  # можно не указывать, Django найдёт поле автоматически
 
 
 @admin.register(NetworkNode)
@@ -15,7 +16,8 @@ class NetworkNodeAdmin(admin.ModelAdmin):
     actions = ['clear_debt']
 
     def get_city(self, obj):
-        return obj.contact.city
+        # obj.contact - обратная связь OneToOne
+        return obj.contact.city if obj.contact else '-'
     get_city.short_description = 'Город'
     get_city.admin_order_field = 'contact__city'
 
@@ -27,7 +29,7 @@ class NetworkNodeAdmin(admin.ModelAdmin):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ('email', 'country', 'city', 'street', 'house_number')
+    list_display = ('email', 'country', 'city', 'street', 'house_number', 'node')
 
 
 @admin.register(Product)

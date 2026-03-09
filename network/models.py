@@ -17,6 +17,13 @@ class Contact(models.Model):
     city = models.CharField(max_length=100)
     street = models.CharField(max_length=100)
     house_number = models.CharField(max_length=20)
+    node = models.OneToOneField(
+        'NetworkNode',
+        on_delete=models.CASCADE,
+        related_name='contact',
+        null=True,  # временно разрешаем null для миграций
+        blank=True
+    )
 
     def __str__(self):
         return f"{self.city}, {self.street} {self.house_number}"
@@ -24,7 +31,6 @@ class Contact(models.Model):
 
 class NetworkNode(models.Model):
     name = models.CharField(max_length=255)
-    contact = models.OneToOneField(Contact, on_delete=models.CASCADE, related_name='node')
     products = models.ManyToManyField(Product, related_name='nodes')
     supplier = models.ForeignKey(
         'self',

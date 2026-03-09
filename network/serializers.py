@@ -12,12 +12,12 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = '__all__'
+        read_only_fields = ('node',)  # поле node будет устанавливаться автоматически
 
 
 class NetworkNodeSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer(read_only=True)
+    contact = ContactSerializer(source='contact', read_only=True)  # обратная связь
     products = ProductSerializer(many=True, read_only=True)
-    supplier = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = NetworkNode
@@ -26,7 +26,7 @@ class NetworkNodeSerializer(serializers.ModelSerializer):
 
 
 class NetworkNodeCreateSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
+    contact = ContactSerializer()  # вложенный сериализатор для создания контакта
     products = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), many=True)
 
     class Meta:
@@ -36,14 +36,16 @@ class NetworkNodeCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         contact_data = validated_data.pop('contact')
         products = validated_data.pop('products')
-        contact = Contact.objects.create(**contact_data)
-        node = NetworkNode.objects.create(contact=contact, **validated_data)
+        # Сначала создаём узел (без контакта)
+        node = NetworkNode.objects.create(**validated_data)
+        # Создаём контакт, привязывая к узлу
+        Contact.objects.create(node=node, **contact_data)
         node.products.set(products)
         return node
 
 
 class NetworkNodeUpdateSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
+    contact = ContactSerializer()  # для обновления контакта
     products = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), many=True)
 
     class Meta:
@@ -54,14 +56,17 @@ class NetworkNodeUpdateSerializer(serializers.ModelSerializer):
         contact_data = validated_data.pop('contact', None)
         products = validated_data.pop('products', None)
 
+        # Обновляем контакт, если есть данные
         if contact_data:
             contact_serializer = ContactSerializer(instance.contact, data=contact_data)
             if contact_serializer.is_valid(raise_exception=True):
                 contact_serializer.save()
 
+        # Обновляем список продуктов
         if products is not None:
             instance.products.set(products)
 
+        # Обновляем остальные поля узла (кроме debt)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
